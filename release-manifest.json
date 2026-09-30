@@ -1,0 +1,1 @@
+{"name":"XIM AI","installer":"XIM-AI-Setup.exe","payload":"XIM-Payload.zip","architecture":"Windows x64","installPath":"%LOCALAPPDATA%\\XIM.Matrix","notes":"Bootstrap installer downloads the current payload from the latest GitHub Release."}
