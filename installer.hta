@@ -12,15 +12,25 @@ function install(){go.disabled=true;
  var d=shell.ExpandEnvironmentStrings(dir.value).replace(/\\/g,'/');
  // an existing dist\ install (laptop layout) is updated in place, otherwise the chosen folder is used
  var app=fso.FileExists(d+'/dist/XimAdmin.exe')?d+'/dist':d;
+ var exe=app+'/XimAdmin.exe', z=d+'/XIM-Payload.zip';
+ var u='https://github.com/romeomalcgh/XIM-AI/releases/latest/download/XIM-Payload.zip';
  set('Preparing...',5);
  if(ps('New-Item -ItemType Directory -Force -Path "'+d+'" | Out-Null')!==0){fail('Could not create '+d+'.');return}
  set('Downloading XIM components...',15);
- var u='https://github.com/romeomalcgh/XIM-AI/releases/latest/download/XIM-Payload.zip', z=d+'/XIM-Payload.zip';
- if(ps('[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$ProgressPreference="SilentlyContinue";Invoke-WebRequest -Uri "'+u+'" -OutFile "'+z+'";Expand-Archive -LiteralPath "'+z+'" -DestinationPath "'+app+'" -Force;Remove-Item "'+z+'" -Force')!==0){fail('Install failed. If XIM is open, close it and try again.');return}
- set('Creating shortcuts...',92);
- ps('$ws=New-Object -ComObject WScript.Shell;$sc=$ws.CreateShortcut($env:USERPROFILE+"\\Desktop\\XIM AI.lnk");$sc.TargetPath="'+app+'/XimAdmin.exe";$sc.WorkingDirectory="'+app+'";$sc.IconLocation="'+app+'/XIM-Matrix.ico";$sc.Save()');
- set('Installation complete.',100);
- shell.Run('"'+app+'/XimAdmin.exe"',1,false);
- window.close()
+ // a running XIM locks its exe, so the move fails and nothing is overwritten.
+ // the old exe is kept as XimAdmin.exe.prev and put back if the extraction fails.
+ var step='[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$ProgressPreference="SilentlyContinue";'
+  +'try{Invoke-WebRequest -Uri "'+u+'" -OutFile "'+z+'";if(Test-Path "'+exe+'"){Move-Item "'+exe+'" "'+exe+'.prev" -Force};'
+  +'try{Expand-Archive -LiteralPath "'+z+'" -DestinationPath "'+app+'" -Force}catch{if((Test-Path "'+exe+'.prev") -and -not (Test-Path "'+exe+'")){Move-Item "'+exe+'.prev" "'+exe+'" -Force};throw}}'
+  +'finally{Remove-Item "'+z+'" -Force -ErrorAction SilentlyContinue}';
+ if(ps(step)!==0){fail('Install failed. If XIM is open, close it and try again.');return}
+ set('Creating desktop shortcut...',92);
+ var w=app.replace(/\//g,'\\');
+ var lnk='$ws=New-Object -ComObject WScript.Shell;$sc=$ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Desktop")) "XIM AI.lnk"));'
+  +'$sc.TargetPath="'+w+'\\XimAdmin.exe";$sc.WorkingDirectory="'+w+'";$sc.IconLocation="'+w+'\\XIM-Matrix.ico";$sc.Save()';
+ var linked=ps(lnk)===0;
+ set(linked?'Installation complete.':'Installed, but the desktop shortcut failed. Start XIM from '+w+'\\XimAdmin.exe',100);
+ shell.Run('"'+exe+'"',1,false);
+ if(linked) window.close()
 }
 </script></body></html>

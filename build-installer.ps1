@@ -44,4 +44,4 @@ SourceFiles0=$root\
 %FILE1%=
 "@ | Set-Content -Encoding ASCII $sed
 & "$env:WINDIR\System32\iexpress.exe" /N /Q $sed
-if(Test-Path $out){$mb=[math]::Round((Get-Item $out).Length/1MB,2);Write-Host "Built $out ($mb MB)"}else{throw "IExpress build failed"}
+for($i=0;$i -lt 60 -and -not (Test-Path $out);$i++){Start-Sleep -Milliseconds 500};if(Test-Path $out){$mb=[math]::Round((Get-Item $out).Length/1MB,2);Write-Host "Built $out ($mb MB)"}else{throw "IExpress build failed"}
