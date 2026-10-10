@@ -21,7 +21,10 @@ class XimSetup : Form {
   try{
    status.Text="Downloading current XIM..."; bar.Value=15;
    using(var w=new WebClient()){await w.DownloadFileTaskAsync(new Uri("https://github.com/romeomalcgh/XIM-AI/releases/latest/download/XIM-Payload.zip"),z);}
-   status.Text="Extracting XIM..."; bar.Value=70; ZipFile.ExtractToDirectory(z,d); File.Delete(z);
+   status.Text="Extracting XIM..."; bar.Value=70;
+   // overwrite on reinstall (ExtractToDirectory throws when a file already exists), and refuse paths that leave the folder
+   using(var za=ZipFile.OpenRead(z)){var root=Path.GetFullPath(d).TrimEnd('\\')+'\\'; foreach(var en in za.Entries){var target=Path.GetFullPath(Path.Combine(d,en.FullName)); if(!target.StartsWith(root,StringComparison.OrdinalIgnoreCase)) throw new IOException("unsafe path in payload: "+en.FullName); if(en.Name.Length>0){Directory.CreateDirectory(Path.GetDirectoryName(target)); en.ExtractToFile(target,true);}}}
+   File.Delete(z);
    bar.Value=100; status.Text="Installation complete."; string e=Path.Combine(d,"XimAdmin.exe"); if(File.Exists(e)) Process.Start(e); Close();
   }catch(Exception ex){install.Enabled=true;status.Text="Install failed: "+ex.Message;}
  }

@@ -3,9 +3,24 @@ body{background:#0a0a0c;color:#eee;font:14px Segoe UI;margin:0}main{width:560px;
 </style></head><body><main><h1>XIM AI</h1><div class="muted">Local AI workspace installer</div><p>Choose where XIM should be installed. The setup program is a small downloader; the large runtime and model files are downloaded separately.</p>
 <input id="dir" value="%LOCALAPPDATA%\XIM.Matrix"/><br><br><button id="go" onclick="install()">Install XIM</button><div id="bar"><div id="fill"></div></div><div id="status">Ready.</div></main>
 <script>var shell=new ActiveXObject("WScript.Shell"), fso=new ActiveXObject("Scripting.FileSystemObject");
-function ps(c){return shell.Run('powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "'+c.replace(/"/g,'\\"')+'"',0,true)}
+// runs PowerShell and returns its exit code. $ErrorActionPreference=Stop makes a failed step exit non-zero.
+function ps(c){return shell.Run('powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference=\'Stop\';'+c.replace(/"/g,'\\"')+'"',0,true)}
 function set(s,p){status.innerText=s;fill.style.width=p+'%'}
-function install(){go.disabled=true;var d=dir.value.replace(/\\/g,'/');set('Preparing...',5);ps('$d="'+d+'";New-Item -ItemType Directory -Force -Path $d | Out-Null;');set('Downloading XIM components...',15);
-var u='https://github.com/romeomalcgh/XIM-AI/releases/latest/download/XIM-Payload.zip';var z=d+'/XIM-Payload.zip';var c='$ProgressPreference="SilentlyContinue";Invoke-WebRequest -Uri "'+u+'" -OutFile "'+z+'";Expand-Archive -LiteralPath "'+z+'" -DestinationPath "'+d+'" -Force;Remove-Item "'+z+'" -Force';
-var r=ps(c);set('Creating shortcuts...',92);ps('$ws=New-Object -ComObject WScript.Shell;$sc=$ws.CreateShortcut($env:USERPROFILE+"\\Desktop\\XIM AI.lnk");$sc.TargetPath="'+d+'/XimAdmin.exe";$sc.WorkingDirectory="'+d+'";$sc.IconLocation="'+d+'/XIM-Matrix.ico";$sc.Save();');set('Installation complete.',100);shell.Run('"'+d+'/XimAdmin.exe"',1,false);window.close()}
+function fail(s){set(s,0);go.disabled=false}
+function install(){go.disabled=true;
+ // expand %LOCALAPPDATA% here, PowerShell does not expand it
+ var d=shell.ExpandEnvironmentStrings(dir.value).replace(/\\/g,'/');
+ // an existing dist\ install (laptop layout) is updated in place, otherwise the chosen folder is used
+ var app=fso.FileExists(d+'/dist/XimAdmin.exe')?d+'/dist':d;
+ set('Preparing...',5);
+ if(ps('New-Item -ItemType Directory -Force -Path "'+d+'" | Out-Null')!==0){fail('Could not create '+d+'.');return}
+ set('Downloading XIM components...',15);
+ var u='https://github.com/romeomalcgh/XIM-AI/releases/latest/download/XIM-Payload.zip', z=d+'/XIM-Payload.zip';
+ if(ps('[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$ProgressPreference="SilentlyContinue";Invoke-WebRequest -Uri "'+u+'" -OutFile "'+z+'";Expand-Archive -LiteralPath "'+z+'" -DestinationPath "'+app+'" -Force;Remove-Item "'+z+'" -Force')!==0){fail('Install failed. If XIM is open, close it and try again.');return}
+ set('Creating shortcuts...',92);
+ ps('$ws=New-Object -ComObject WScript.Shell;$sc=$ws.CreateShortcut($env:USERPROFILE+"\\Desktop\\XIM AI.lnk");$sc.TargetPath="'+app+'/XimAdmin.exe";$sc.WorkingDirectory="'+app+'";$sc.IconLocation="'+app+'/XIM-Matrix.ico";$sc.Save()');
+ set('Installation complete.',100);
+ shell.Run('"'+app+'/XimAdmin.exe"',1,false);
+ window.close()
+}
 </script></body></html>
